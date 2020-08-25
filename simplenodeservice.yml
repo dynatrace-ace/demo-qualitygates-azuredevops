@@ -82,7 +82,7 @@ metadata:
   name: simplenodeservice
 spec:
   rules:
-  - host: simplenode.staging.52.188.42.167.nip.io
+  - host: simplenode.staging.INGRESS_PLACEHOLDER
     http:
       paths:
       - backend:

@@ -26,16 +26,20 @@ variables:
 - name: KEPTN_MONITORING
   value: 'dynatrace'
 - name: SIMPLENODE_VERSION
-  value: '2'
-- name: REGISTRY
-  value: 'aceegistry.azurecr.io'
+  value: '1'
 - name: APP_NAME
   value: 'simplenodeservice'
+- name: INGRESS_ENDPOINT
+  value: 'xxx.xxx.xxx.xxx.nip.io'
+- name: REGISTRY_NAME
+  value: 'ACE Registry'
+- name: AKS_NAME
+  value: 'AKS'
 
 steps:
 - task: Docker@2
   inputs:
-    containerRegistry: 'ACE Registry'
+    containerRegistry: '$(REGISTRY_NAME)'
     repository: '$(APP_NAME)'
     command: 'build'
     Dockerfile: '**/Dockerfile'
@@ -44,18 +48,19 @@ steps:
   displayName: 'Build image'
 - task: Docker@2
   inputs:
-    containerRegistry: 'ACE Registry'
+    containerRegistry: '$(REGISTRY_NAME)'
     repository: '$(APP_NAME)'
     command: 'push'
     tags: '$(SIMPLENODE_VERSION).0.0-$(Build.BuildId)'
   displayName: 'Push image'
 - script: |
     sed -i "s#image: .*#image: $REGISTRY/$APP_NAME:$SIMPLENODE_VERSION.0.0-$BUILD_BUILDID#" $APP_NAME.yml
+    sed -i "s|INGRESS_PLACEHOLDER|${env.DT_TAGS}|" $APP_NAME.yml
   displayName: 'Create manifest'
 - task: KubernetesManifest@0
   inputs:
     action: 'deploy'
-    kubernetesServiceConnection: 'AKS'
+    kubernetesServiceConnection: '$(AKS_NAME)'
     manifests: '$(APP_NAME).yml'
   displayName: 'Deploy App'
 - script: |
@@ -181,7 +186,7 @@ steps:
         \"service\": \"$KEPTN_SERVICE\",
         \"stage\": \"$KEPTN_STAGE\",
         \"teststrategy\": \"performance\",
-        \"image\": \"$REGISTRY/$APP_NAME\",
+        \"image\": \"$APP_NAME\",
         \"tag\": \"$SIMPLENODE_VERSION.0.0-$BUILD_BUILDID\",
         \"labels\": {
           \"buildId\": \"$BUILD_BUILDID\",
