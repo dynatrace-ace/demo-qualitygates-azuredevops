@@ -4,7 +4,7 @@ This repository contains information to demo quality gates on azure devops
 
 ## Set Up Azure environment
 
-1. Create AKS (Azure Kubernetes Service) cluster with ACR (Azure Container Registry) integration. Check out https://docs.microsoft.com/en-us/azure/aks/cluster-container-registry-integration for more details
+1. Create AKS (Azure Kubernetes Service) cluster with ACR (Azure Container Registry) integration. Check out https://docs.microsoft.com/en-us/azure/aks/cluster-container-registry-integration for more details. Keep note of the registry endpoint `xxx.azurecr.io`
 2. Create a new project inside Azure Devops (https://dev.azure.com/)
 3. Import this repository ![Import Repo](img/ado-importrepo.png)
 4. Once the import has been completed, go to `Project Settings` (bottom-left side of the screen)
@@ -42,6 +42,8 @@ variables:
   value: 'xxx.xxx.xxx.xxx.nip.io'
 - name: REGISTRY_NAME
   value: 'ACE Registry' # as configured in the service connection in step 5
+- name: REGISTRY # endpoint 
+  value: 'aceegistry.azurecr.io'
 - name: AKS_NAME # as configured in the service connection in step 5
   value: 'AKS'
 ```

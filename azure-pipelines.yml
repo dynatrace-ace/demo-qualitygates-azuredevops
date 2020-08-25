@@ -35,6 +35,8 @@ variables:
   value: 'ACE Registry'
 - name: AKS_NAME
   value: 'AKS'
+- name: REGISTRY
+  value: 'aceegistry.azurecr.io'
 
 steps:
 - task: Docker@2
