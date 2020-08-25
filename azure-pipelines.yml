@@ -1,0 +1,235 @@
+# Starter pipeline
+
+# Start with a minimal pipeline that you can customize to build and deploy your code.
+# Add steps that build, run tests, deploy, and more:
+# https://aka.ms/yaml
+
+trigger:
+- master
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+- name: KEPTN_ENDPOINT
+  value: 'https://xxx.nip.io/api'
+- name: KEPTN_BRIDGE
+  value: 'https://xxx.nip.io/bridge'
+- name: KEPTN_API_TOKEN
+  value: xxx
+- name: KEPTN_PROJECT
+  value: 'simplenode-azure'
+- name: KEPTN_SERVICE
+  value: 'simplenodeservice'
+- name: KEPTN_STAGE
+  value: 'staging'
+- name: KEPTN_MONITORING
+  value: 'dynatrace'
+- name: SIMPLENODE_VERSION
+  value: '2'
+- name: REGISTRY
+  value: 'aceegistry.azurecr.io'
+- name: APP_NAME
+  value: 'simplenodeservice'
+
+steps:
+- task: Docker@2
+  inputs:
+    containerRegistry: 'ACE Registry'
+    repository: '$(APP_NAME)'
+    command: 'build'
+    Dockerfile: '**/Dockerfile'
+    arguments: '--build-arg BUILD_NUMBER=$(SIMPLENODE_VERSION)'
+    tags: '$(SIMPLENODE_VERSION).0.0-$(Build.BuildId)'
+  displayName: 'Build image'
+- task: Docker@2
+  inputs:
+    containerRegistry: 'ACE Registry'
+    repository: '$(APP_NAME)'
+    command: 'push'
+    tags: '$(SIMPLENODE_VERSION).0.0-$(Build.BuildId)'
+  displayName: 'Push image'
+- script: |
+    sed -i "s#image: .*#image: $REGISTRY/$APP_NAME:$SIMPLENODE_VERSION.0.0-$BUILD_BUILDID#" $APP_NAME.yml
+  displayName: 'Create manifest'
+- task: KubernetesManifest@0
+  inputs:
+    action: 'deploy'
+    kubernetesServiceConnection: 'AKS'
+    manifests: '$(APP_NAME).yml'
+  displayName: 'Deploy App'
+- script: |
+    export
+    echo -e "Create project $KEPTN_PROJECT"
+    shipyardb64=$(base64 $(System.DefaultWorkingDirectory)/keptn/shipyard.yaml | tr -d \\n)
+    curl -k --location --request POST "$(KEPTN_ENDPOINT)/v1/project" \
+    --header "x-token: $(KEPTN_API_TOKEN)" \
+    --header 'Content-Type: application/json' \
+    --data-raw "{
+      \"name\": \"$(KEPTN_PROJECT)\",
+      \"shipyard\": \"$shipyardb64\"
+    }"
+    echo -e "Create Service $KEPTN_SERVICE"
+    curl -k --location --request POST "$KEPTN_ENDPOINT/v1/project/$KEPTN_PROJECT/service" \
+    --header "x-token: $KEPTN_API_TOKEN" \
+    --header 'Content-Type: application/json' \
+    --data-raw "{
+      \"serviceName\": \"$KEPTN_SERVICE\"
+    }"
+
+    echo -e "Upload SLO"
+    slob64=$(base64 $(System.DefaultWorkingDirectory)/keptn/slo.yml | tr -d \\n)
+
+    curl -k --location --request POST "$KEPTN_ENDPOINT/configuration-service/v1/project/$KEPTN_PROJECT/stage/$KEPTN_STAGE/service/$KEPTN_SERVICE/resource" \
+    --header "x-token: $KEPTN_API_TOKEN" \
+    --header 'Content-Type: application/json' \
+    --data-raw "{
+      \"resources\" : [
+        {
+          \"resourceURI\": \"slo.yaml\",
+          \"resourceContent\": \"$slob64\"
+        }
+      ]
+    }"
+
+    -e "Upload SLI"
+    slib64=$(base64 $(System.DefaultWorkingDirectory)/keptn/sli.yml | tr -d \\n)
+
+    curl -k --location --request POST "$KEPTN_ENDPOINT/configuration-service/v1/project/$KEPTN_PROJECT/stage/$KEPTN_STAGE/service/$KEPTN_SERVICE/resource" \
+    --header "x-token: $KEPTN_API_TOKEN" \
+    --header 'Content-Type: application/json' \
+    --data-raw "{
+      \"resources\" : [
+        {
+          \"resourceURI\": \"dynatrace/sli.yaml\",
+          \"resourceContent\": \"$slib64\"
+        }
+      ]
+    }"
+
+    echo -e "Upload DT Config"
+    conf64=$(base64 $(System.DefaultWorkingDirectory)/keptn/dynatrace.conf.yaml | tr -d \\n)
+
+    curl -k --location --request POST "$KEPTN_ENDPOINT/configuration-service/v1/project/$KEPTN_PROJECT/stage/$KEPTN_STAGE/service/$KEPTN_SERVICE/resource" \
+    --header "x-token: $KEPTN_API_TOKEN" \
+    --header 'Content-Type: application/json' \
+    --data-raw "{
+      \"resources\" : [
+        {
+          \"resourceURI\": \"dynatrace/dynatrace.conf.yaml\",
+          \"resourceContent\": \"$conf64\"
+        }
+      ]
+    }"
+
+    echo -e "Upload JMeter Config"
+    jmeterconf64=$(base64 $(System.DefaultWorkingDirectory)/keptn/jmeter.conf.yaml | tr -d \\n)
+
+    curl -k --location --request POST "$KEPTN_ENDPOINT/configuration-service/v1/project/$KEPTN_PROJECT/stage/$KEPTN_STAGE/service/$KEPTN_SERVICE/resource" \
+    --header "x-token: $KEPTN_API_TOKEN" \
+    --header 'Content-Type: application/json' \
+    --data-raw "{
+      \"resources\" : [
+        {
+          \"resourceURI\": \"jmeter/jmeter.conf.yaml\",
+          \"resourceContent\": \"$jmeterconf64\"
+        }
+      ]
+    }"
+
+    echo -e "Upload JMeter test"
+    jmeter64=$(base64 $(System.DefaultWorkingDirectory)/jmeter/simplenodeservice_load.jmx | tr -d \\n)
+    curl -k --location --request POST "$KEPTN_ENDPOINT/configuration-service/v1/project/$KEPTN_PROJECT/stage/$KEPTN_STAGE/service/$KEPTN_SERVICE/resource" \
+    --header "x-token: $KEPTN_API_TOKEN" \
+    --header 'Content-Type: application/json' \
+    --data-raw "{
+      \"resources\" : [
+        {
+          \"resourceURI\": \"jmeter/simplenodeservice_load.jmx\",
+          \"resourceContent\": \"$jmeter64\"
+        }
+      ]
+    }"
+
+
+    echo -e "Configure Monitoring $KEPTN_MONITORING"
+    
+    curl -k --location --request POST "$KEPTN_ENDPOINT/v1/event" \
+    --header "x-token: $KEPTN_API_TOKEN" \
+    --header 'Content-Type: application/json' \
+    --data-raw "{
+      \"contenttype\": \"application/json\",
+      \"data\": {
+        \"project\": \"$KEPTN_PROJECT\",
+        \"service\": \"$KEPTN_SERVICE\",
+        \"type\": \"$KEPTN_MONITORING\"
+      },
+      \"source\": \"$KEPTN_SOURCE\",
+      \"specversion\": \"0.2\",
+      \"type\": \"sh.keptn.event.monitoring.configure\"
+    }"
+  displayName: 'Keptn Init'
+- script: |
+    eval_res=$(curl -k --location --request POST "$KEPTN_ENDPOINT/v1/event" \
+    --header "x-token: $KEPTN_API_TOKEN" \
+    --header 'Content-Type: application/json' \
+    --data-raw "{
+      \"contenttype\": \"application/json\",
+      \"data\": {
+        \"deploymentURIPublic\": \"http://simplenode.staging.52.188.42.167.nip.io\",
+        \"project\": \"$KEPTN_PROJECT\",
+        \"service\": \"$KEPTN_SERVICE\",
+        \"stage\": \"$KEPTN_STAGE\",
+        \"teststrategy\": \"performance\",
+        \"image\": \"$REGISTRY/$APP_NAME\",
+        \"tag\": \"$SIMPLENODE_VERSION.0.0-$BUILD_BUILDID\",
+        \"labels\": {
+          \"buildId\": \"$BUILD_BUILDID\",
+          \"project\": \"$BUILD_DEFINITIONNAME\",
+          \"SCM\": \"$BUILD_REPOSITORY_URI\",
+          \"simplenode-version\": \"$SIMPLENODE_VERSION.0.0\",
+          \"commit message\": \"$BUILD_SOURCEVERSIONMESSAGE\"
+        }
+      },
+      \"source\": \"AzureDevOps\",
+      \"specversion\": \"0.2\",
+      \"type\": \"sh.keptn.events.deployment-finished\"
+    }")
+
+    echo -e "Evaluation Result: $eval_res"
+    keptn_context=$(echo $eval_res | jq -r .keptnContext)
+    echo -e "KeptnContext:      $keptn_context"
+
+    # Poll the keptn API every 10 seconds with the context ID for a evaluation-done event
+    fin="0" 
+    until [ "$fin" = "1" ]
+    do
+        cnt=$((cnt + 1))
+        event_result=$(curl -s -k -X GET "${KEPTN_ENDPOINT}/v1/event?keptnContext=${keptn_context}&type=sh.keptn.events.evaluation-done" -H "accept: application/json" -H "x-token: ${KEPTN_API_TOKEN}")
+        echo "RESULT: $event_result"
+        status=$(echo $event_result|jq .data.result)
+        if [ "$status" = "null" ]; then
+            echo "The Keptn is still sailing around..."
+            sleep 10
+        else
+            fin="1"
+        fi
+        if [ "$cnt" = "90" ]; then
+            echo "Keptn timed out evaluating your deployment!"
+            exit 1
+        fi
+    done
+
+    bridge_url="${KEPTN_BRIDGE}/trace/${keptn_context}"
+
+    if [ "$status" = "\"fail\"" ]; then
+            echo "Keptn Quality Gate - Evaluation failed!"
+            echo "For details visit the Bridge!"
+            echo $bridge_url
+            exit 1
+    else
+            echo "Evaluation finished."
+            echo "For details visit the Bridge!"
+            echo $bridge_url
+    fi
+  displayName: 'Keptn Test and Eval'
