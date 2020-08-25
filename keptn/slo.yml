@@ -17,16 +17,16 @@ objectives:
       - criteria:
           - "<=1000"
     weight: 1
-  - sli: "rt_invokeapi" # looking at a particular transaction
-    weight: 2           # business critical transaction
-    pass:
-      - criteria:
-          - "<=+10%"    # Degradation-driven
-          - "<850000"   # NFR-driven
-    warning:
-      - criteria:
-          - "<=+20%"
-          - "<=1000000"
+  # - sli: "rt_invokeapi" # looking at a particular transaction
+  #   weight: 2           # business critical transaction
+  #   pass:
+  #     - criteria:
+  #         - "<=+10%"    # Degradation-driven
+  #         - "<850000"   # NFR-driven
+  #   warning:
+  #     - criteria:
+  #         - "<=+20%"
+  #         - "<=1000000"
   - sli: "error_rate"
     pass:
       - criteria:

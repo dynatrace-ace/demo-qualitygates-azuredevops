@@ -55,7 +55,7 @@ steps:
   displayName: 'Push image'
 - script: |
     sed -i "s#image: .*#image: $REGISTRY/$APP_NAME:$SIMPLENODE_VERSION.0.0-$BUILD_BUILDID#" $APP_NAME.yml
-    sed -i "s|INGRESS_PLACEHOLDER|${env.DT_TAGS}|" $APP_NAME.yml
+    sed -i "s|INGRESS_PLACEHOLDER|$INGRESS_ENDPOINT|" $APP_NAME.yml
   displayName: 'Create manifest'
 - task: KubernetesManifest@0
   inputs:
