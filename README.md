@@ -1,4 +1,4 @@
-# demo-qualitygate-azuredevops
+# demo-qualitygates-azuredevops
 This repository contains information to demo quality gates on azure devops
 
 
@@ -15,8 +15,8 @@ This repository contains information to demo quality gates on azure devops
    ![Docker Registry Connection](img/ado-serviceconnregistry.png)
 6. Connect to the kubernetes cluster (can be via Cloud Shell) and install the `ingress-nginx` Ingress controller (https://kubernetes.github.io/ingress-nginx/deploy/)
 7. Get the external ip of the `ingress-nginx-controller`, e.g. using the command `kubectl -n ingress-nginx get svc ingress-nginx-controller`
-8. Deploy the `OneAgent Operator` on the kubernetes cluster
-9.  Deploy Keptn Quality Gates on the kubernetes cluster (or elsewhere) and ensure it is exposed. Note the Keptn Endpoint, Keptn API token and Keptn Bridge URL
+8. Deploy the `OneAgent Operator` on the kubernetes cluster where the application will be deployed
+9.  Deploy Keptn Quality Gates on the kubernetes cluster (or elsewhere) and ensure it is exposed. Also install the [dynatrace-service](https://github.com/keptn-contrib/dynatrace-service), [dynatrace-sli-service](https://github.com/keptn-contrib/dynatrace-sli-service) and jmeter-service Note the Keptn Endpoint, Keptn API token and Keptn Bridge URL. Check out [Keptn documentation](https://keptn.sh/docs/0.7.x/operate/install/) for more info
 10. Open the `azure-pipelines.yml` file (this can be done in the Azure DevOps UI) and fill in the variables:
 ```
 variables:
